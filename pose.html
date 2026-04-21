@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Take a pic</title>
+    <style>
+        :root {
+            --pink-pastel: #ffcce7;
+            --blue-pastel: #cceeff;
+            --yellow-pastel: #ffffcc;
+            --text-color: #5d5d5d;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--blue-pastel);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        h1 {
+            background: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            box-shadow: 5px 5px 0px var(--pink-pastel);
+            border: 2px solid var(--text-color);
+        }
+
+        .main-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .camera-section {
+            position: relative;
+            background: white;
+            padding: 15px;
+            border-radius: 20px;
+            border: 3px solid var(--text-color);
+        }
+
+        video {
+            width: 400px;
+            border-radius: 10px;
+            transform: scaleX(-1);
+            background: #eee;
+        }
+
+        .camera-overlay {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            pointer-events: none;
+            font-size: 50px;
+        }
+
+        #photo-strip {
+            width: 160px;
+            background-color: white;
+            padding: 15px;
+            border: 2px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 10px 10px 20px rgba(0,0,0,0.1);
+        }
+
+        .photo-slot {
+            width: 130px;
+            height: 100px;
+            background: #f9f9f9;
+            border: 1px dashed #ccc;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Kontrol */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        button {
+            padding: 12px;
+            border-radius: 15px;
+            border: 2px solid var(--text-color);
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+        }
+
+        .btn-capture { background-color: var(--pink-pastel); font-size: 1.1em; }
+        .btn-capture:hover { transform: scale(1.05); }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        select, button.small {
+            padding: 8px;
+            border-radius: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .footer-text {
+            font-size: 12px;
+            margin-top: 20px;
+            text-align: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>✨ Pastel Joy Photobox ✨</h1>
+
+    <div class="main-container">
+        <div class="camera-section">
+            <div id="accessory-display" class="camera-overlay"></div>
+            <video id="video" autoplay playsinline></video>
+            <div class="controls">
+                <button class="btn-capture" onclick="takePhoto()">📸 AMBIL FOTO (3 Detik)</button>
+                
+                <div class="options-grid">
+                    <select id="filter-select">
+                        <option value="none">Normal Filter</option>
+                        <option value="grayscale(100%)">Classic B&W</option>
+                        <option value="sepia(60%)">Vintage Warm</option>
+                        <option value="contrast(1.2) brightness(1.1)">Dreamy Pop</option>
+                    </select>
+
+                    <select id="sticker-select" onchange="updateSticker()">
+                        <option value="">Tanpa Aksesoris</option>
+                        <option value="🐱">Kuping Kucing</option>
+                        <option value="🐰">Kuping Kelinci</option>
+                        <option value="💖">Hati (Love)</option>
+                        <option value="✨">Sparkles</option>
+                    </select>
+                </div>
+                <button onclick="clearStrip()" class="small">Reset Strip</button>
+            </div>
+        </div>
+
+        <div id="photo-strip">
+            <div class="photo-slot" id="slot-1"></div>
+            <div class="photo-slot" id="slot-2"></div>
+            <div class="photo-slot" id="slot-3"></div>
+            <div class="photo-slot" id="slot-4"></div>
+            <p class="footer-text">OUR MEMORIES<br><small>2026 Edition</small></p>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const filterSelect = document.getElementById('filter-select');
+        const stickerSelect = document.getElementById('sticker-select');
+        const accessoryDisplay = document.getElementById('accessory-display');
+        let currentSlot = 1;
+
+        async function setupCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (err) {
+                alert("Kamera tidak bisa diakses!");
+            }
+        }
+
+        function updateSticker() {
+            accessoryDisplay.innerText = stickerSelect.value;
+        }
+
+        function takePhoto() {
+            if (currentSlot > 4) {
+                alert("Strip sudah penuh! Silakan reset.");
+                return;
+            }
+
+            const btn = document.querySelector('.btn-capture');
+            let timer = 3;
+            btn.innerText = timer;
+
+            const countdown = setInterval(() => {
+                timer--;
+                btn.innerText = timer;
+                if (timer <= 0) {
+                    clearInterval(countdown);
+                    btn.innerText = "📸 AMBIL FOTO (3 Detik)";
+                    captureToCanvas();
+                }
+            }, 1000);
+        }
+
+        function captureToCanvas() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+
+            ctx.filter = filterSelect.value;
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            if (stickerSelect.value) {
+                ctx.scale(-1, 1);
+                ctx.translate(-canvas.width, 0);
+                ctx.font = "60px Arial";
+                ctx.fillText(stickerSelect.value, 20, 60);
+            }
+
+            const slot = document.getElementById(`slot-${currentSlot}`);
+            slot.innerHTML = '';
+            slot.appendChild(canvas);
+            currentSlot++;
+        }
+
+        function clearStrip() {
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`slot-${i}`).innerHTML = '';
+            }
+            currentSlot = 1;
+        }
+
+        setupCamera();
+    </script>
+</body>
+</html>
