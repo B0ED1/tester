@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Preview Photobox ✨</title>
+    <style>
+        :root {
+            --pink-soft: #ffd1dc;
+            --blue-soft: #d0e7ff;
+            --white: #ffffff;
+        }
+
+        body {
+            font-family: 'Arial Rounded MT Bold', sans-serif;
+            background: linear-gradient(120deg, var(--pink-soft), var(--blue-soft));
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .main-wrapper {
+            display: flex;
+            gap: 30px;
+            align-items: flex-start;
+            margin-top: 20px;
+        }
+
+        /* Area Kamera dengan Live Frame */
+        .camera-box {
+            position: relative;
+            width: 450px;
+            height: 337px;
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 10px solid white;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transform: scaleX(-1);
+        }
+
+        /* LIVE OVERLAY EFFECT */
+        .live-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            box-sizing: border-box;
+            border: 30px solid transparent; /* Default border size */
+            transition: all 0.3s ease;
+        }
+
+        /* Variasi Tema Live */
+        .frame-classic { border-color: rgba(255, 255, 255, 0.8); }
+        .frame-pink { border-color: rgba(255, 182, 193, 0.7); border-style: double; border-width: 40px; }
+        .frame-retro { border: 30px solid #333; outline: 5px dashed white; outline-offset: -15px; }
+        .frame-soft { border-color: var(--blue-soft); border-radius: 50px; }
+
+        /* Strip Foto Hasil */
+        #photo-strip {
+            width: 180px;
+            background: white;
+            padding: 20px 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .slot {
+            width: 160px;
+            height: 120px;
+            background: #eee;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .slot img { width: 100%; height: 100%; object-fit: cover; }
+
+        /* Tombol & Kontrol */
+        .controls { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; width: 100%; }
+        
+        button {
+            padding: 12px;
+            border-radius: 15px;
+            border: none;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .btn-capture { background: #ff75a0; color: white; font-size: 1.1rem; }
+        .btn-capture:hover { background: #ff4d88; transform: translateY(-2px); }
+
+        #flash {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            z-index: 10;
+        }
+
+        .footer-strip { font-size: 10px; color: #888; margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2 style="color: #555;">✨ LIVE PREVIEW PHOTOBOX ✨</h2>
+
+    <div class="main-wrapper">
+        <div class="left-col">
+            <div class="camera-box">
+                <div id="flash"></div>
+                <div id="live-frame" class="live-overlay frame-classic"></div>
+                <video id="video" autoplay playsinline></video>
+            </div>
+
+            <div class="controls">
+                <div style="display: flex; gap: 10px;">
+                    <select id="theme-select" onchange="updateLiveFrame()" style="flex:1; padding: 10px; border-radius: 10px;">
+                        <option value="frame-classic">Tema: Minimalist White</option>
+                        <option value="frame-pink">Tema: Soft Pink Double</option>
+                        <option value="frame-retro">Tema: Retro Black</option>
+                        <option value="frame-soft">Tema: Rounded Blue</option>
+                    </select>
+                </div>
+                <button class="btn-capture" onclick="startCountdown()">AMBIL FOTO (3s)</button>
+            </div>
+        </div>
+
+        <div>
+            <div id="photo-strip">
+                <div class="slot" id="s1"></div>
+                <div class="slot" id="s2"></div>
+                <div class="slot" id="s3"></div>
+                <div class="slot" id="s4"></div>
+                <div class="footer-tag">
+                    <p class="footer-strip">MEMORIES ARCHIVE<br>2026 EDITION</p>
+                </div>
+            </div>
+            <button onclick="downloadResult()" style="width: 100%; margin-top: 10px; background: #333; color: white;">⬇️ DOWNLOAD</button>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const liveFrame = document.getElementById('live-frame');
+        const flash = document.getElementById('flash');
+        let currentSlot = 1;
+        let photoData = [];
+
+        // Inisialisasi Kamera
+        navigator.mediaDevices.getUserMedia({ video: true }).then(stream => {
+            video.srcObject = stream;
+        });
+
+        // Ganti Efek Secara Live
+        function updateLiveFrame() {
+            const theme = document.getElementById('theme-select').value;
+            liveFrame.className = 'live-overlay ' + theme;
+        }
+
+        function startCountdown() {
+            if (currentSlot > 4) return alert("Strip penuh, silakan refresh!");
+            
+            const btn = document.querySelector('.btn-capture');
+            let count = 3;
+            btn.innerText = count;
+
+            const timer = setInterval(() => {
+                count--;
+                btn.innerText = count;
+                if (count <= 0) {
+                    clearInterval(timer);
+                    btn.innerText = "AMBIL FOTO (3s)";
+                    capturePhoto();
+                }
+            }, 1000);
+        }
+
+        function capturePhoto() {
+            // Efek Flash
+            flash.style.opacity = '1';
+            setTimeout(() => flash.style.opacity = '0', 200);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Gambar Hasil Kamera (Mirrored)
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // 2. Gambar Frame yang sedang aktif ke atas foto
+            // Kita reset scale dulu untuk menggambar overlay
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            
+            // Mengambil warna border dari elemen live-frame
+            const style = window.getComputedStyle(liveFrame);
+            const borderWidth = parseInt(style.borderLeftWidth);
+            const borderColor = style.borderLeftColor;
+
+            ctx.lineWidth = borderWidth * 1.5; // Sesuaikan skala canvas
+            ctx.strokeStyle = borderColor;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+            // Tampilkan di Slot
+            const imgUrl = canvas.toDataURL('image/png');
+            document.getElementById('s' + currentSlot).innerHTML = `<img src="${imgUrl}">`;
+            photoData.push(imgUrl);
+            currentSlot++;
+        }
+
+        async function downloadResult() {
+            if (photoData.length < 4) return alert("Ambil 4 foto dulu ya!");
+
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = 400;
+            finalCanvas.height = 1100;
+            const ctx = finalCanvas.getContext('2d');
+
+            // Background strip
+            ctx.fillStyle = "white";
+            ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+
+            for (let i = 0; i < 4; i++) {
+                const img = new Image();
+                img.src = photoData[i];
+                await new Promise(r => img.onload = r);
+                ctx.drawImage(img, 20, 20 + (i * 260), 360, 250);
+            }
+
+            // Watermark
+            ctx.fillStyle = "#555";
+            ctx.font = "bold 16px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText("ARIFAV PHOTOBOX 2026", 200, 1070);
+
+            const link = document.createElement('a');
+            link.download = 'my-photobox.png';
+            link.href = finalCanvas.toDataURL();
+            link.click();
+        }
+    </script>
+</body>
+</html>
